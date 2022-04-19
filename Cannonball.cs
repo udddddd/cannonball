@@ -9,44 +9,94 @@ namespace HelloWorld
 		public abstract GameState Update(Level level);
 		public abstract void Draw(Level level);
 	}
-#if false
+	class GameDraggingState: GameState {
+		public override GameState Update(Level level) {
+			if(Raylib.IsMouseButtonReleased(0)) {
+				level.ball.velocity = (level.ball.position - Raylib.GetMousePosition()) * 10;
+				return new GamePlayState();
+			}
+			return this;
+		}
+		public override void Draw(Level level) {
+			Raylib.BeginDrawing();
+			Raylib.ClearBackground(Color.GRAY);
+			foreach(var ledge in level.ledges) {
+				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
+				ledge.Draw(ledgeColor);
+			}
+			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
+			Raylib.DrawLineEx(level.ball.position, Raylib.GetMousePosition(), 5, Color.YELLOW);
+			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
+			Raylib.EndDrawing();
+		}
+	}
 	class GamePlayState: GameState {
-		public GamePlayState() {
+		public override GameState Update(Level level) {
+			Raylib.SetMousePosition(
+				Math.Clamp(Raylib.GetMouseX(), 0, Raylib.GetScreenWidth()),
+				Math.Clamp(Raylib.GetMouseY(), 0, Raylib.GetScreenHeight())
+			);
+			level.Update(Raylib.GetFrameTime());
+			if(Raylib.IsMouseButtonPressed(0))
+				return new GameDraggingState();
+			if(Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_RIGHT))
+				return new GameDrawingState();
+			return this;
+		}
+		public override void Draw(Level level) {
+			Raylib.BeginDrawing();
+			Raylib.ClearBackground(Color.WHITE);
+			foreach(var ledge in level.ledges) {
+				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
+				ledge.Draw(ledgeColor);
+			}
+			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
+			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
+			Raylib.EndDrawing();
+		}
+	}
+
+	class GameDrawingState: GameState {
+		public GameDrawingState() {
+			Vector2 mouse = new Vector2(Raylib.GetMouseX(), Raylib.GetMouseY());
+			createdLedge = new Ledge(mouse, mouse, 1, 10);
 		}
 		public override GameState Update(Level level) {
 			Raylib.SetMousePosition(
 				Math.Clamp(Raylib.GetMouseX(), 0, Raylib.GetScreenWidth()),
 				Math.Clamp(Raylib.GetMouseY(), 0, Raylib.GetScreenHeight())
 			);
-			//if(Raylib.IsMouseButtonPressed(0))
-			//return ;
-			//return new GameDraggingState();
-			
+			Vector2 mouse = new Vector2(Raylib.GetMouseX(), Raylib.GetMouseY());
+			createdLedge.b = mouse;
+			createdLedge.k += Raylib.GetMouseWheelMove() / 100;
+			createdLedge.k = Math.Clamp(createdLedge.k, 0f, 1f);
+			if(Raylib.IsMouseButtonReleased(MouseButton.MOUSE_BUTTON_RIGHT)) {
+				level.ledges.Add(createdLedge);
+				return new GamePlayState();
+			}
+			return this;
 		}
 		public override void Draw(Level level) {
 			Raylib.BeginDrawing();
 			Raylib.ClearBackground(Color.WHITE);
-
-			DrawHelp();
-
 			foreach(var ledge in level.ledges) {
 				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
-				Raylib.DrawLineEx(ledge.a, ledge.b, 5, ledgeColor);
+				ledge.Draw(ledgeColor);
 			}
 			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-			if(dragging)
-				Raylib.DrawLineEx(level.ball.position, Raylib.GetMousePosition(), 5, Color.YELLOW);
 			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
+			var cledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), createdLedge.k));
+			Raylib.DrawLineEx(createdLedge.a, createdLedge.b, 5, cledgeColor);
 			Raylib.EndDrawing();
 		}
+		private Ledge createdLedge;
 	}
-#endif
 
 	class Ball {
 		public Ball(Vector2 position, float radius, float mass, Vector2 velocity = default(Vector2)) {
 			this.position = position;
 			this.radius   = radius;
-			this.mass     = mass;
+			this.mass	  = mass;
 			this.velocity = velocity;
 		}
 		public void Update(float dt) {
@@ -54,7 +104,7 @@ namespace HelloWorld
 		}
 		public bool CollideWith(Ledge ledge) {
 			Vector2 dist = ledge.Distance(position);
-			if(dist.LengthSquared() <= radius * radius) {
+			if(dist.LengthSquared() <= Math.Pow(radius, 2)) {
 				Vector2 n = Vector2.Normalize(dist);
 				// Move ball slightly above the ledge to prevent sticking
 				position = position - dist + n * (radius + 1e-8f);
@@ -68,24 +118,38 @@ namespace HelloWorld
 		}
 		public Vector2 position { get; set; }
 		public Vector2 velocity { get; set; }
-		public float radius     { get; set; }
-		public float mass       { get; set; }
+		public float radius		{ get; set; }
+		public float mass		{ get; set; }
 	}
 	class Ledge {
-		public Ledge(Vector2 a, Vector2 b, float k, float mu) {
-			this.a  = a;
-			this.b  = b;
-			this.k  = k;
+		public Ledge(Vector2 a, Vector2 b, float k, float thickness) {
+			this.a	= a;
+			this.b	= b;
+			this.k	= k;
+			this.thickness = thickness;
 		}
 		public Vector2 Distance(Vector2 point) {
 			Vector2 line = this.b - this.a;
 			float t = Vector2.Dot(point - this.a, line) / line.LengthSquared();
 			t = Math.Clamp(t, 0f, 1f);
-			return point - this.a - line * t;
+			Vector2 dist = point - this.a - line * t;
+			return dist - Vector2.Normalize(dist) * thickness;
+		}
+		public void Draw(Color color) {
+			Raylib.DrawCircleV(a, thickness, color);
+			Raylib.DrawCircleV(b, thickness, color);
+			Vector2 normal = b - a;
+			float t = normal.X;
+			normal.X = normal.Y;
+			normal.Y = -t;
+			Vector2 off = Vector2.Normalize(normal) * thickness;
+			Raylib.DrawLineV(a + off, b + off, color);
+			Raylib.DrawLineV(a - off, b - off, color);
 		}
 		public Vector2 a;
 		public Vector2 b;
 		public float k;
+		public float thickness;
 	}
 
 	class Level {
@@ -102,16 +166,10 @@ namespace HelloWorld
 		}
 	}
 
-    static class Program
-    {
-		public static void DrawHelp() {
-			Raylib.DrawText("LMB:   Hold to choose impulse", 10, 10, 30, Color.LIGHTGRAY);
-			Raylib.DrawText("Wheel: Change ledge's restitution while drawing", 10, 40, 30, Color.LIGHTGRAY);
-			Raylib.DrawText("RMB:   Draw ledge", 10, 70, 30, Color.LIGHTGRAY);
-		}
-        public static void Main()
-        {
-            Raylib.InitWindow(800, 480, "Hello World");
+	static class Program
+	{
+		public static void Main() {
+			Raylib.InitWindow(800, 480, "Hello World");
 			// Will draw cursor manually
 			Raylib.DisableCursor();
 
@@ -122,60 +180,20 @@ namespace HelloWorld
 
 			/* Room initialization */
 			level.ledges = new List<Ledge>();
-			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(Raylib.GetScreenWidth(), 0), 0.5f, 0.5f));
-			level.ledges.Add(new Ledge(new Vector2(Raylib.GetScreenWidth(), 0), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 0.5f));
-			level.ledges.Add(new Ledge(new Vector2(0, Raylib.GetScreenHeight()), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 0.5f));
-			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, Raylib.GetScreenHeight()), 0.5f, 0.5f));
+			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(Raylib.GetScreenWidth(), 0), 0.5f, 0f));
+			level.ledges.Add(new Ledge(new Vector2(Raylib.GetScreenWidth(), 0), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 0f));
+			level.ledges.Add(new Ledge(new Vector2(0, Raylib.GetScreenHeight()), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 0f));
+			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, Raylib.GetScreenHeight()), 0.5f, 0f));
 
-			/* Game states */
-			bool dragging = false;
-			bool drawing = false;
-
+			GameState state = new GamePlayState();
 			/* Main loop */
-            while (!Raylib.WindowShouldClose())
-            {
-				if(Raylib.IsMouseButtonPressed(0))
-					dragging = true;
-				if(Raylib.IsMouseButtonReleased(0) && dragging) {
-					dragging = false;
-					level.ball.velocity = (level.ball.position - Raylib.GetMousePosition()) * 10;
-				}
-				if(!dragging) {
-					Raylib.SetMousePosition(
-						Math.Clamp(Raylib.GetMouseX(), 0, Raylib.GetScreenWidth()),
-						Math.Clamp(Raylib.GetMouseY(), 0, Raylib.GetScreenHeight())
-					);
-				}
-				if(Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_RIGHT)) {
-					level.ledges.Add(new Ledge(Raylib.GetMousePosition(), Raylib.GetMousePosition(), 1f, 0.5f));
-					drawing = true;
-				}
-				if(drawing) {
-					level.ledges.Last().b = Raylib.GetMousePosition();
-					level.ledges.Last().k += Raylib.GetMouseWheelMove() / 100;
-					level.ledges.Last().k = Math.Clamp(level.ledges.Last().k, 0f, 1f);
-				}
-				if(Raylib.IsMouseButtonReleased(MouseButton.MOUSE_BUTTON_RIGHT))
-					drawing = false;
-				if(!dragging && !drawing)
-					level.Update(Raylib.GetFrameTime());
-                Raylib.BeginDrawing();
-                Raylib.ClearBackground(Color.WHITE);
+			while (!Raylib.WindowShouldClose())
+			{
+				state = state.Update(level);
+				state.Draw(level);
+			}
 
-				DrawHelp();
-
-				foreach(var ledge in level.ledges) {
-					var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
-					Raylib.DrawLineEx(ledge.a, ledge.b, 5, ledgeColor);
-				}
-				Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-				if(dragging)
-					Raylib.DrawLineEx(level.ball.position, Raylib.GetMousePosition(), 5, Color.YELLOW);
-				Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
-                Raylib.EndDrawing();
-            }
-
-            Raylib.CloseWindow();
-        }
-    }
+			Raylib.CloseWindow();
+		}
+	}
 }
