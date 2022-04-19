@@ -86,7 +86,7 @@ namespace HelloWorld
 			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
 			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
 			var cledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), createdLedge.k));
-			Raylib.DrawLineEx(createdLedge.a, createdLedge.b, 5, cledgeColor);
+			createdLedge.Draw(cledgeColor);
 			Raylib.EndDrawing();
 		}
 		private Ledge createdLedge;
