@@ -19,14 +19,20 @@ namespace HelloWorld
 		}
 		public override void Draw(Level level) {
 			Raylib.BeginDrawing();
-			Raylib.ClearBackground(Color.GRAY);
+			Raylib.ClearBackground(Color.BLACK);
 			foreach(var ledge in level.ledges) {
 				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
 				ledge.Draw(ledgeColor);
 			}
+			//Raylib.DrawLineEx(level.ball.position, Raylib.GetMousePosition(), 5, Color.BLUE);
+			Vector2 normal = level.ball.position - Raylib.GetMousePosition();
+			float t = normal.X;
+			normal.X = normal.Y;
+			normal.Y = -t;
+			normal = Vector2.Normalize(normal) * level.ball.radius;
+			Raylib.DrawTriangle(level.ball.position - normal, level.ball.position + normal, Raylib.GetMousePosition(), Color.BLUE);
 			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-			Raylib.DrawLineEx(level.ball.position, Raylib.GetMousePosition(), 5, Color.YELLOW);
-			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
+			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.WHITE);
 			Raylib.EndDrawing();
 		}
 	}
@@ -45,13 +51,13 @@ namespace HelloWorld
 		}
 		public override void Draw(Level level) {
 			Raylib.BeginDrawing();
-			Raylib.ClearBackground(Color.WHITE);
+			Raylib.ClearBackground(Color.BLACK);
 			foreach(var ledge in level.ledges) {
 				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
 				ledge.Draw(ledgeColor);
 			}
 			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
+			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.WHITE);
 			Raylib.EndDrawing();
 		}
 	}
@@ -78,13 +84,13 @@ namespace HelloWorld
 		}
 		public override void Draw(Level level) {
 			Raylib.BeginDrawing();
-			Raylib.ClearBackground(Color.WHITE);
+			Raylib.ClearBackground(Color.BLACK);
 			foreach(var ledge in level.ledges) {
 				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
 				ledge.Draw(ledgeColor);
 			}
 			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.BLACK);
+			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.WHITE);
 			var cledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), createdLedge.k));
 			createdLedge.Draw(cledgeColor);
 			Raylib.EndDrawing();
@@ -136,15 +142,17 @@ namespace HelloWorld
 			return dist - Vector2.Normalize(dist) * thickness;
 		}
 		public void Draw(Color color) {
+			if(thickness <= 0)
+				return;
 			Raylib.DrawCircleV(a, thickness, color);
 			Raylib.DrawCircleV(b, thickness, color);
 			Vector2 normal = b - a;
 			float t = normal.X;
 			normal.X = normal.Y;
 			normal.Y = -t;
-			Vector2 off = Vector2.Normalize(normal) * thickness;
-			Raylib.DrawLineV(a + off, b + off, color);
-			Raylib.DrawLineV(a - off, b - off, color);
+			normal = Vector2.Normalize(normal) * thickness;
+			Raylib.DrawLineV(a + normal, b + normal, color);
+			Raylib.DrawLineV(a - normal, b - normal, color);
 		}
 		public Vector2 a;
 		public Vector2 b;
