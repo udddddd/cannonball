@@ -10,6 +10,9 @@ namespace HelloWorld
 		public abstract void Draw(Level level);
 	}
 	class GameDraggingState: GameState {
+		public GameDraggingState(Camera2D camera) {
+			dragPoint = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
+		}
 		public override GameState Update(Level level, ref Camera2D camera) {
 			dragPoint = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
 			if(Raylib.IsMouseButtonReleased(0)) {
@@ -42,7 +45,7 @@ namespace HelloWorld
 			);
 			level.Update(Raylib.GetFrameTime());
 			if(Raylib.IsMouseButtonPressed(0))
-				return new GameDraggingState();
+				return new GameDraggingState(camera);
 			if(Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_RIGHT))
 				return new GameDrawingState(camera);
 			camera.zoom += (float)Raylib.GetMouseWheelMove() / 100;
@@ -62,7 +65,7 @@ namespace HelloWorld
 	class GameDrawingState: GameState {
 		public GameDrawingState(Camera2D camera) {
 			Vector2 a = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
-			createdLedge = new Ledge(a, a, 1, 10);
+			createdLedge = new Ledge(a, a, 1, 0.5f);
 		}
 		public override GameState Update(Level level, ref Camera2D camera) {
 			Raylib.SetMousePosition(
@@ -178,22 +181,24 @@ namespace HelloWorld
 
 			Level level = new Level();
 
-			level.ball = new Ball(new Vector2(Raylib.GetScreenWidth() / 2, Raylib.GetScreenHeight() / 2), 20, 15);
-			level.gravity = new Vector2(0, 10 * 10);
+			level.ball = new Ball(new Vector2(5,5), 1, 10);
+			level.gravity = new Vector2(0, 10);
 
 			/* Room initialization */
+			const float roomWidth = 10;
+			const float roomHeight = 10;
 			level.ledges = new List<Ledge>();
-			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(Raylib.GetScreenWidth(), 0), 0.5f, 10f));
-			level.ledges.Add(new Ledge(new Vector2(Raylib.GetScreenWidth(), 0), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 10f));
-			level.ledges.Add(new Ledge(new Vector2(0, Raylib.GetScreenHeight()), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 10f));
-			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, Raylib.GetScreenHeight()), 0.5f, 10f));
+			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(10, 0), 0.5f, 0.5f));
+			level.ledges.Add(new Ledge(new Vector2(roomWidth, 0), new Vector2(roomWidth, roomHeight), 0.5f, 0.5f));
+			level.ledges.Add(new Ledge(new Vector2(0, roomHeight), new Vector2(roomWidth, roomHeight), 0.5f, 0.5f));
+			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, roomHeight), 0.5f, 0.5f));
 
 			bool edit = false;
 			string text = new string("");
 
 			Camera2D camera = new Camera2D();
 			camera.offset = new (Raylib.GetScreenWidth() / 2, Raylib.GetScreenHeight() / 2);
-			camera.zoom = 1;
+			camera.zoom = Raylib.GetScreenHeight() / 20;
 
 			GameState state = new GamePlayState();
 			/* Main loop */
@@ -201,7 +206,6 @@ namespace HelloWorld
 			{
 				state = state.Update(level, ref camera);
 				camera.target = level.ball.position;
-				//camera.zoom += (float)Raylib.GetMouseWheelMove() * 0.05f;
 				Raylib.BeginDrawing();
 				Raylib.ClearBackground(Raylib.BLACK);
 				Raylib.BeginMode2D(camera);
