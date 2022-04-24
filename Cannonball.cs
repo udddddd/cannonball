@@ -49,6 +49,7 @@ namespace HelloWorld
 			if(Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_RIGHT))
 				return new GameDrawingState(camera);
 			camera.zoom += (float)Raylib.GetMouseWheelMove() * 0.5f;
+			camera.target = Vector2.Lerp(camera.target, level.ball.position, 0.02f);
 			Console.WriteLine(camera.zoom);
 			return this;
 		}
@@ -205,7 +206,6 @@ namespace HelloWorld
 			while (!Raylib.WindowShouldClose())
 			{
 				state = state.Update(level, ref camera);
-				camera.target = level.ball.position;
 				Raylib.BeginDrawing();
 				Raylib.ClearBackground(Raylib.BLACK);
 				Raylib.BeginMode2D(camera);
