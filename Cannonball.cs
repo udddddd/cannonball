@@ -1,43 +1,41 @@
 ﻿using System.Numerics;
 using System.Collections.Generic;
 using System.Linq;
-using Raylib_cs;
+using Raylib_CsLo;
 
 namespace HelloWorld
 {
 	abstract class GameState {
-		public abstract GameState Update(Level level);
+		public abstract GameState Update(Level level, ref Camera2D camera);
 		public abstract void Draw(Level level);
 	}
 	class GameDraggingState: GameState {
-		public override GameState Update(Level level) {
+		public override GameState Update(Level level, ref Camera2D camera) {
+			dragPoint = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
 			if(Raylib.IsMouseButtonReleased(0)) {
-				level.ball.velocity = (level.ball.position - Raylib.GetMousePosition()) * 10;
+				level.ball.velocity = (level.ball.position - dragPoint) * 10;
 				return new GamePlayState();
 			}
 			return this;
 		}
 		public override void Draw(Level level) {
-			Raylib.BeginDrawing();
-			Raylib.ClearBackground(Color.BLACK);
+			Raylib.ClearBackground(Raylib.BLACK);
 			foreach(var ledge in level.ledges) {
 				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
 				ledge.Draw(ledgeColor);
 			}
-			//Raylib.DrawLineEx(level.ball.position, Raylib.GetMousePosition(), 5, Color.BLUE);
-			Vector2 normal = level.ball.position - Raylib.GetMousePosition();
+			Vector2 normal = level.ball.position - dragPoint;
 			float t = normal.X;
 			normal.X = normal.Y;
 			normal.Y = -t;
 			normal = Vector2.Normalize(normal) * level.ball.radius;
-			Raylib.DrawTriangle(level.ball.position - normal, level.ball.position + normal, Raylib.GetMousePosition(), Color.BLUE);
-			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.WHITE);
-			Raylib.EndDrawing();
+			Raylib.DrawTriangle(level.ball.position - normal, level.ball.position + normal, dragPoint, Raylib.BLUE);
+			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Raylib.BLUE);
 		}
+		private Vector2 dragPoint;
 	}
 	class GamePlayState: GameState {
-		public override GameState Update(Level level) {
+		public override GameState Update(Level level, ref Camera2D camera) {
 			Raylib.SetMousePosition(
 				Math.Clamp(Raylib.GetMouseX(), 0, Raylib.GetScreenWidth()),
 				Math.Clamp(Raylib.GetMouseY(), 0, Raylib.GetScreenHeight())
@@ -46,33 +44,32 @@ namespace HelloWorld
 			if(Raylib.IsMouseButtonPressed(0))
 				return new GameDraggingState();
 			if(Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_RIGHT))
-				return new GameDrawingState();
+				return new GameDrawingState(camera);
+			camera.zoom += (float)Raylib.GetMouseWheelMove() / 100;
+			Console.WriteLine(camera.zoom);
 			return this;
 		}
 		public override void Draw(Level level) {
-			Raylib.BeginDrawing();
-			Raylib.ClearBackground(Color.BLACK);
+			Raylib.ClearBackground(Raylib.BLACK);
 			foreach(var ledge in level.ledges) {
 				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
 				ledge.Draw(ledgeColor);
 			}
-			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.WHITE);
-			Raylib.EndDrawing();
+			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Raylib.BLUE);
 		}
 	}
 
 	class GameDrawingState: GameState {
-		public GameDrawingState() {
-			Vector2 mouse = new Vector2(Raylib.GetMouseX(), Raylib.GetMouseY());
-			createdLedge = new Ledge(mouse, mouse, 1, 10);
+		public GameDrawingState(Camera2D camera) {
+			Vector2 a = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
+			createdLedge = new Ledge(a, a, 1, 10);
 		}
-		public override GameState Update(Level level) {
+		public override GameState Update(Level level, ref Camera2D camera) {
 			Raylib.SetMousePosition(
 				Math.Clamp(Raylib.GetMouseX(), 0, Raylib.GetScreenWidth()),
 				Math.Clamp(Raylib.GetMouseY(), 0, Raylib.GetScreenHeight())
 			);
-			Vector2 mouse = new Vector2(Raylib.GetMouseX(), Raylib.GetMouseY());
+			Vector2 mouse = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
 			createdLedge.b = mouse;
 			createdLedge.k += Raylib.GetMouseWheelMove() / 100;
 			createdLedge.k = Math.Clamp(createdLedge.k, 0f, 1f);
@@ -83,17 +80,14 @@ namespace HelloWorld
 			return this;
 		}
 		public override void Draw(Level level) {
-			Raylib.BeginDrawing();
-			Raylib.ClearBackground(Color.BLACK);
+			Raylib.ClearBackground(Raylib.BLACK);
 			foreach(var ledge in level.ledges) {
 				var ledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), ledge.k));
 				ledge.Draw(ledgeColor);
 			}
-			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Color.BLUE);
-			Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Color.WHITE);
+			Raylib.DrawCircleV(level.ball.position, level.ball.radius, Raylib.BLUE);
 			var cledgeColor = Raylib.ColorFromNormalized(Vector4.Lerp(new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1), createdLedge.k));
 			createdLedge.Draw(cledgeColor);
-			Raylib.EndDrawing();
 		}
 		private Ledge createdLedge;
 	}
@@ -178,6 +172,7 @@ namespace HelloWorld
 	{
 		public static void Main() {
 			Raylib.InitWindow(800, 480, "Hello World");
+			RayGui.GuiLoadStyleDefault();
 			// Will draw cursor manually
 			Raylib.DisableCursor();
 
@@ -188,17 +183,35 @@ namespace HelloWorld
 
 			/* Room initialization */
 			level.ledges = new List<Ledge>();
-			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(Raylib.GetScreenWidth(), 0), 0.5f, 0f));
-			level.ledges.Add(new Ledge(new Vector2(Raylib.GetScreenWidth(), 0), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 0f));
-			level.ledges.Add(new Ledge(new Vector2(0, Raylib.GetScreenHeight()), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 0f));
-			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, Raylib.GetScreenHeight()), 0.5f, 0f));
+			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(Raylib.GetScreenWidth(), 0), 0.5f, 10f));
+			level.ledges.Add(new Ledge(new Vector2(Raylib.GetScreenWidth(), 0), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 10f));
+			level.ledges.Add(new Ledge(new Vector2(0, Raylib.GetScreenHeight()), new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()), 0.5f, 10f));
+			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, Raylib.GetScreenHeight()), 0.5f, 10f));
+
+			bool edit = false;
+			string text = new string("");
+
+			Camera2D camera = new Camera2D();
+			camera.offset = new (Raylib.GetScreenWidth() / 2, Raylib.GetScreenHeight() / 2);
+			camera.zoom = 1;
 
 			GameState state = new GamePlayState();
 			/* Main loop */
 			while (!Raylib.WindowShouldClose())
 			{
-				state = state.Update(level);
+				state = state.Update(level, ref camera);
+				camera.target = level.ball.position;
+				//camera.zoom += (float)Raylib.GetMouseWheelMove() * 0.05f;
+				Raylib.BeginDrawing();
+				Raylib.ClearBackground(Raylib.BLACK);
+				Raylib.BeginMode2D(camera);
 				state.Draw(level);
+				Raylib.EndMode2D();
+				if(RayGui.GuiTextBox(new Rectangle(25, 25, 100, 50), text, 128, edit))
+					edit = !edit;
+				level.ball.radius = RayGui.GuiSliderBar(new Rectangle(640, 40, 105, 20), "Width", level.ball.radius.ToString(), level.ball.radius, 0, (float)Raylib.GetScreenWidth() - 300);
+				Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Raylib.WHITE);
+				Raylib.EndDrawing();
 			}
 
 			Raylib.CloseWindow();
