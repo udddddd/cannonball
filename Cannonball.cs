@@ -48,7 +48,7 @@ namespace HelloWorld
 				return new GameDraggingState(camera);
 			if(Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_RIGHT))
 				return new GameDrawingState(camera);
-			camera.zoom += (float)Raylib.GetMouseWheelMove() / 100;
+			camera.zoom += (float)Raylib.GetMouseWheelMove() * 0.5f;
 			Console.WriteLine(camera.zoom);
 			return this;
 		}
@@ -185,10 +185,10 @@ namespace HelloWorld
 			level.gravity = new Vector2(0, 10);
 
 			/* Room initialization */
-			const float roomWidth = 10;
-			const float roomHeight = 10;
+			const float roomWidth = 50;
+			const float roomHeight = 50;
 			level.ledges = new List<Ledge>();
-			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(10, 0), 0.5f, 0.5f));
+			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(roomWidth, 0), 0.5f, 0.5f));
 			level.ledges.Add(new Ledge(new Vector2(roomWidth, 0), new Vector2(roomWidth, roomHeight), 0.5f, 0.5f));
 			level.ledges.Add(new Ledge(new Vector2(0, roomHeight), new Vector2(roomWidth, roomHeight), 0.5f, 0.5f));
 			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, roomHeight), 0.5f, 0.5f));
