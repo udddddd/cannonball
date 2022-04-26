@@ -16,7 +16,7 @@ namespace HelloWorld
 		public override GameState Update(Level level, ref Camera2D camera) {
 			dragPoint = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
 			if(Raylib.IsMouseButtonReleased(0)) {
-				level.ball.velocity = (level.ball.position - dragPoint) * 10;
+				level.ball.velocity = (level.ball.position - dragPoint) * 2;
 				return new GamePlayState();
 			}
 			return this;
@@ -43,14 +43,13 @@ namespace HelloWorld
 				Math.Clamp(Raylib.GetMouseX(), 0, Raylib.GetScreenWidth()),
 				Math.Clamp(Raylib.GetMouseY(), 0, Raylib.GetScreenHeight())
 			);
-			level.Update(Raylib.GetFrameTime());
 			if(Raylib.IsMouseButtonPressed(0))
 				return new GameDraggingState(camera);
 			if(Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_RIGHT))
 				return new GameDrawingState(camera);
+			level.Update(Raylib.GetFrameTime());
 			camera.zoom += (float)Raylib.GetMouseWheelMove() * 0.5f;
-			camera.target = Vector2.Lerp(camera.target, level.ball.position, 0.02f);
-			Console.WriteLine(camera.zoom);
+			camera.target = Vector2.Lerp(camera.target, level.ball.position, 10f * Raylib.GetFrameTime());
 			return this;
 		}
 		public override void Draw(Level level) {
@@ -75,7 +74,7 @@ namespace HelloWorld
 			);
 			Vector2 mouse = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
 			createdLedge.b = mouse;
-			createdLedge.k += Raylib.GetMouseWheelMove() / 100;
+			createdLedge.k += Raylib.GetMouseWheelMove() * 0.02f;
 			createdLedge.k = Math.Clamp(createdLedge.k, 0f, 1f);
 			if(Raylib.IsMouseButtonReleased(MouseButton.MOUSE_BUTTON_RIGHT)) {
 				level.ledges.Add(createdLedge);
@@ -97,10 +96,9 @@ namespace HelloWorld
 	}
 
 	class Ball {
-		public Ball(Vector2 position, float radius, float mass, Vector2 velocity = default(Vector2)) {
+		public Ball(Vector2 position, float radius, Vector2 velocity = default(Vector2)) {
 			this.position = position;
 			this.radius   = radius;
-			this.mass	  = mass;
 			this.velocity = velocity;
 		}
 		public void Update(float dt) {
@@ -123,7 +121,6 @@ namespace HelloWorld
 		public Vector2 position { get; set; }
 		public Vector2 velocity { get; set; }
 		public float radius		{ get; set; }
-		public float mass		{ get; set; }
 	}
 	class Ledge {
 		public Ledge(Vector2 a, Vector2 b, float k, float thickness) {
@@ -165,7 +162,7 @@ namespace HelloWorld
 		public Ball ball { get; set; }
 		public Vector2 gravity { get; set; }
 		public void Update(float dt) {
-			ball.velocity += ball.mass * gravity * dt;
+			ball.velocity += gravity * dt;
 			ball.Update(dt);
 			foreach(var ledge in ledges)
 				ball.CollideWith(ledge);
@@ -182,7 +179,7 @@ namespace HelloWorld
 
 			Level level = new Level();
 
-			level.ball = new Ball(new Vector2(5,5), 1, 10);
+			level.ball = new Ball(new Vector2(5,5), 1f);
 			level.gravity = new Vector2(0, 10);
 
 			/* Room initialization */
@@ -194,12 +191,9 @@ namespace HelloWorld
 			level.ledges.Add(new Ledge(new Vector2(0, roomHeight), new Vector2(roomWidth, roomHeight), 0.5f, 0.5f));
 			level.ledges.Add(new Ledge(new Vector2(0, 0), new Vector2(0, roomHeight), 0.5f, 0.5f));
 
-			bool edit = false;
-			string text = new string("");
-
 			Camera2D camera = new Camera2D();
 			camera.offset = new (Raylib.GetScreenWidth() / 2, Raylib.GetScreenHeight() / 2);
-			camera.zoom = Raylib.GetScreenHeight() / 20;
+			camera.zoom = 20;
 
 			GameState state = new GamePlayState();
 			/* Main loop */
@@ -211,9 +205,7 @@ namespace HelloWorld
 				Raylib.BeginMode2D(camera);
 				state.Draw(level);
 				Raylib.EndMode2D();
-				if(RayGui.GuiTextBox(new Rectangle(25, 25, 100, 50), text, 128, edit))
-					edit = !edit;
-				level.ball.radius = RayGui.GuiSliderBar(new Rectangle(640, 40, 105, 20), "Width", level.ball.radius.ToString(), level.ball.radius, 0, (float)Raylib.GetScreenWidth() - 300);
+				level.ball.radius = RayGui.GuiSliderBar(new Rectangle(640, 40, 105, 20), "Radius", level.ball.radius.ToString(), level.ball.radius, 1, 10);
 				Raylib.DrawCircleV(Raylib.GetMousePosition(), 2, Raylib.WHITE);
 				Raylib.EndDrawing();
 			}
